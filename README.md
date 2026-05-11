@@ -27,7 +27,7 @@
 
 ## 贡献
 
-详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。命名规范、版本号策略等通用规则跟 [sb-framework](http://192.168.10.241/saibo/framework/sb-framework) 一致。
+详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。命名规范、版本号策略等通用规则跟 [sb-framework](https://gitlab.saibo.club/saibo/framework/sb-framework) 一致。
 
 ## License
 

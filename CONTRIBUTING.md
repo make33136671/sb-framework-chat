@@ -16,7 +16,7 @@
 
 ## 分支 / commit / 版本
 
-跟 [sb-framework](http://192.168.10.241/saibo/framework/sb-framework) 治理基线一致：
+跟 [sb-framework](https://gitlab.saibo.club/saibo/framework/sb-framework) 治理基线一致：
 - main 受保护，所有变更走 MR
 - commit message 中文 Conventional Commits（`feat(telegram): xxx`）
 - 版本号 SemVer，预发布 `-preview.N`
