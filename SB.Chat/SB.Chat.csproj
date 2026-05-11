@@ -1,9 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>SB.Chat</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>saibo</Authors>
+    <Description>Saibo 框架 IM/Chat 抽象层（基座，与具体 IM 平台解耦）</Description>
+    <PackageProjectUrl>https://gitlab.saibo.club/saibo/framework/sb-framework-chat</PackageProjectUrl>
+    <RepositoryUrl>https://gitlab.saibo.club/saibo/framework/sb-framework-chat</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>
