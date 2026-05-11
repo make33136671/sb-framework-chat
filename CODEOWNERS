@@ -1,0 +1,6 @@
+* @root
+/CODEOWNERS @root
+/CONTRIBUTING.md @root
+/README.md @root
+/.gitlab-ci.yml @root
+/.gitlab/ @root
