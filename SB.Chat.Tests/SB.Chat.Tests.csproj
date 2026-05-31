@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SB.Chat\SB.Chat.csproj" />
-    <ProjectReference Include="..\SB.Chat.Telegram\SB.Chat.Telegram.csproj" />
+    <PackageReference Include="SB.Chat" Version="0.1.0-preview.1" />
+    <PackageReference Include="SB.Chat.Telegram" Version="0.1.0-preview.1" />
   </ItemGroup>
 
   <ItemGroup>
