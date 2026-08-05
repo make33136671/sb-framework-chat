@@ -26,6 +26,8 @@
 
     <!-- 装配扩展（AddTelegramChat 配置绑定）所需；IServiceCollection 已随框架 Core 传递可用 -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+    <!-- 账号健康度 IHealthCheck 实现所需 -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

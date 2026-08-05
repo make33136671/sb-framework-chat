@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sb.Framework.Chat.Telegram</RootNamespace>
+    <AssemblyName>Sb.Framework.Chat.Telegram</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageId>Sb.Framework.Chat.Telegram</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Sb Framework</Authors>
+    <Description>SB Framework Chat Bot 通道适配器（Telegram.Bot）：webhook/polling 接收、命令/回调/菜单、图文发送、媒体下载 + 统一 Webhook 端点。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sb.Framework.Chat\Sb.Framework.Chat.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Telegram.Bot" Version="22.4.2" />
+  </ItemGroup>
+
+  <!-- Webhook 端点 Controller 需要 ASP.NET Core MVC 类型 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
