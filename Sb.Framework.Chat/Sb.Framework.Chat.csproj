@@ -23,6 +23,9 @@
     -->
     <ProjectReference Include="..\..\sb-framework\SB.Framework.Core\SB.Framework.Core.csproj" />
     <ProjectReference Include="..\..\sb-framework\SB.Framework.Models\SB.Framework.Models.csproj" />
+
+    <!-- 装配扩展（AddTelegramChat 配置绑定）所需；IServiceCollection 已随框架 Core 传递可用 -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

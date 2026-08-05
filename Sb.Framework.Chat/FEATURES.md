@@ -16,7 +16,7 @@
 | Step | 内容 | 状态 |
 |------|------|------|
 | Step 1 | Core 通用工具（sb-framework） | ✅ **已完成**（5 个工具入库） |
-| Step 2 | SDK 核心工程骨架 + 模型/Handler/Context/Account | ✅ **已完成**（编译通过，入库） |
+| Step 2 | SDK 核心（模型/Handler/Context/Account/存储/装配） | ✅ **已完成**（编译通过，入库） |
 | Step 3 | 增强基础（通知推送/发送队列/Mock 适配器） | 🚧 未开始 |
 | Step 4 | MtProtoAdapter 生产化 | 🚧 未开始 |
 | Step 5 | BotApiAdapter + 统一 Webhook 端点 | 🚧 未开始 |
@@ -46,8 +46,8 @@
 | 会话状态机 + 凭证抽象 | `Account/AccountEnums.cs`、`AccountCredential.cs` | ✅ 已完成 | Phase1 |
 | IMessageCacheStrategy + 内存实现（可插拔） | `Cache/*.cs` | ✅ 已完成 | Phase1 |
 | ITelegramAdapter 适配器接口 | `Adapter/ITelegramAdapter.cs` | ✅ 已完成 | Phase1 |
-| **存储 chat_* 表实体 + IModuleInitializer** | `Storage/`（空） | 🚧 **未完成** | Phase1 |
-| 装配扩展 AddTelegramChat + 配置节 | （待） | 🚧 未完成 | Phase1 |
+| 存储 chat_* 表实体（6 张表 + ChatModuleInitializer） | `Storage/Chat*.cs`、`ChatModuleInitializer.cs` | ✅ **已完成** | Phase1 |
+| 装配扩展 AddTelegramChat + 配置节 TelegramChatOptions | `Extensions/TelegramChatExtensions.cs`、`TelegramChatOptions.cs` | ✅ **已完成** | Phase1 |
 | 视频/语音/文件/贴纸消息模型 | — | 🚧 未开始 | Phase2 |
 
 ## 三、增强功能
@@ -79,9 +79,8 @@
 
 ---
 
-## 待补项（Step 2 收尾）
+## 待补项
 
-- [ ] 存储表实体（`ChatAccount/ChatSession/ChatPeer/ChatMessage/ChatMedia/ChatSyncState`）+ `ChatModuleInitializer`
-- [ ] 装配扩展 `TelegramChatExtensions.AddTelegramChat()` + 配置节绑定
+- 无（Step 2 全部完成）。下一步：Step 3 增强基础 / Step 4 MtProtoAdapter / Step 5 BotApiAdapter。
 
 > 完成即转 ✅。每完成一项即时更新本表。
