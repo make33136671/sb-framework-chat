@@ -17,7 +17,7 @@
 |------|------|------|
 | Step 1 | Core 通用工具（sb-framework） | ✅ **已完成**（5 个工具入库） |
 | Step 2 | SDK 核心（模型/Handler/Context/Account/存储/装配） | ✅ **已完成**（编译通过，入库） |
-| Step 3 | 增强基础（通知推送/发送队列/Mock 适配器） | 🚧 未开始 |
+| Step 3 | 增强基础（通知推送/发送队列/Mock 适配器） | ✅ **已完成**（编译通过） |
 | Step 4 | MtProtoAdapter 生产化 | 🚧 未开始 |
 | Step 5 | BotApiAdapter + 统一 Webhook 端点 | 🚧 未开始 |
 
@@ -54,9 +54,9 @@
 
 | 能力 | 状态 | 阶段 |
 |------|------|------|
-| 统一通知推送 `INotificationService` | 🚧 未开始 | Phase1 |
-| 内置发送队列 + 频率控制 | 🚧 未开始 | Phase1 |
-| Mock 适配器（开发/测试） | 🚧 未开始 | Phase1 |
+| 统一通知推送 `INotificationService` | ✅ **已完成**（DefaultNotificationService） | Phase1 |
+| 内置发送队列 + 频率控制 | ✅ **已完成**（DefaultSendQueue：Channel+限速+重试+保序） | Phase1 |
+| Mock 适配器（开发/测试） | ✅ **已完成**（MockTelegramAdapter + AddTelegramMockAdapter） | Phase1 |
 | 内置统一 Webhook 端点 | 🚧 未开始 | Phase1 |
 | 账号健康度 → /health | 🚧 未开始 | Phase1 |
 | 通用消息中间件（敏感词/审计/关键词） | 🚧 未开始 | Phase2 |
