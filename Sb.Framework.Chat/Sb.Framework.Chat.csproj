@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sb.Framework.Chat</RootNamespace>
+    <AssemblyName>Sb.Framework.Chat</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageId>Sb.Framework.Chat</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Sb Framework</Authors>
+    <Description>SB Framework Chat 统一核心：双通道（Bot/个人号）消息模型、MessageHandler、会话上下文、账号容器、存储。设计参考盛派微信 SDK。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      开发期：ProjectReference 指向相邻 sb-framework 仓库，一次编译全贯通。
+      发布期：dotnet pack 自动把 ProjectReference 转成对应版本的 PackageReference 依赖。
+      派生项目通过 NuGet 消费（Sb.Framework.Core [0.4.6,) + Sb.Framework.Models [0.4.7,)）。
+    -->
+    <ProjectReference Include="..\..\sb-framework\SB.Framework.Core\SB.Framework.Core.csproj" />
+    <ProjectReference Include="..\..\sb-framework\SB.Framework.Models\SB.Framework.Models.csproj" />
+  </ItemGroup>
+
+</Project>
