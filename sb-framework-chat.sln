@@ -3,12 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.Chat", "SB.Chat\SB.Chat.csproj", "{D5CEA8C3-B185-4683-A240-A5DD82427324}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.Chat.Telegram", "SB.Chat.Telegram\SB.Chat.Telegram.csproj", "{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.Chat.Tests", "SB.Chat.Tests\SB.Chat.Tests.csproj", "{87F84F75-765B-47A4-8843-F16C3A38C5D3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sb.Framework.Chat", "Sb.Framework.Chat\Sb.Framework.Chat.csproj", "{FCEDB478-76B9-4615-A368-241C8D111334}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.Framework.Core", "..\sb-framework\SB.Framework.Core\SB.Framework.Core.csproj", "{5A6EE137-D0BE-40A8-9E5E-8B36E342BE47}"
@@ -31,42 +25,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|x64.Build.0 = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Debug|x86.Build.0 = Debug|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|x64.ActiveCfg = Release|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|x64.Build.0 = Release|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|x86.ActiveCfg = Release|Any CPU
-		{D5CEA8C3-B185-4683-A240-A5DD82427324}.Release|x86.Build.0 = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|x64.Build.0 = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Debug|x86.Build.0 = Debug|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|x64.ActiveCfg = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|x64.Build.0 = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|x86.ActiveCfg = Release|Any CPU
-		{ED3CA0E9-4593-4EAB-BBF3-D4AC1448754A}.Release|x86.Build.0 = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|x64.Build.0 = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Debug|x86.Build.0 = Debug|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|x64.ActiveCfg = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|x64.Build.0 = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|x86.ActiveCfg = Release|Any CPU
-		{87F84F75-765B-47A4-8843-F16C3A38C5D3}.Release|x86.Build.0 = Release|Any CPU
 		{FCEDB478-76B9-4615-A368-241C8D111334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FCEDB478-76B9-4615-A368-241C8D111334}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCEDB478-76B9-4615-A368-241C8D111334}.Debug|x64.ActiveCfg = Debug|Any CPU
