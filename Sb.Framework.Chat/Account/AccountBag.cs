@@ -26,7 +26,7 @@ public sealed class AccountBag
     public DateTime LastActiveTime { get; set; } = SB.Framework.Core.Util.AppTime.UtcNow;
 
     /// <summary>凭证（运行期内存持有，实现可插拔，不直接暴露明文）。</summary>
-    internal AccountCredential Credential { get; set; } = new();
+    public AccountCredential Credential { get; set; } = new();
 }
 
 /// <summary>账号状态变更事件参数。</summary>

@@ -47,6 +47,9 @@ public sealed class RequestMessageText : TelegramRequestMessageBase
 public sealed class RequestMessageImage : TelegramRequestMessageBase
 {
     public ImageMedia? Media { get; set; }
+
+    /// <summary>图片说明文字（如有）。</summary>
+    public string? Caption { get; set; }
 }
 
 /// <summary>内联按钮回调（Bot 通道）。</summary>
@@ -71,4 +74,25 @@ public enum GroupEventType
     BotRemoved,
     MemberJoined,
     MemberLeft
+}
+
+/// <summary>服务消息类型（控制/信号类，非用户消息）。</summary>
+public enum ServiceMessageType
+{
+    /// <summary>消息撤回信号：携带被撤回的消息 id 列表（防撤回=内容已保留，仅标记）。</summary>
+    MessagesWithdrawn,
+
+    /// <summary>账号会话失效（手机登出/异地登录等），需业务层重新授权。</summary>
+    SessionInvalidated
+}
+
+/// <summary>
+/// 服务消息（控制信号）。撤回信号（MessagesWithdrawn）用于防撤回：内容已入库，此处仅标记 withdrawn。
+/// </summary>
+public sealed class RequestMessageService : TelegramRequestMessageBase
+{
+    public ServiceMessageType ServiceType { get; set; }
+
+    /// <summary>被撤回/受影响的通道消息 id 列表。</summary>
+    public List<long> MessageIds { get; set; } = new();
 }

@@ -67,8 +67,8 @@ public static class AccountContainer
     /// </summary>
     public static event EventHandler<AccountStateChangedEventArgs>? StateChanged;
 
-    /// <summary>更新状态并触发事件（适配器调用）。</summary>
-    internal static void UpdateState(string accountId, AccountSessionState newState)
+    /// <summary>更新状态并触发事件（通道适配器调用）。</summary>
+    public static void UpdateState(string accountId, AccountSessionState newState)
     {
         AccountBag? bag;
         AccountSessionState old;

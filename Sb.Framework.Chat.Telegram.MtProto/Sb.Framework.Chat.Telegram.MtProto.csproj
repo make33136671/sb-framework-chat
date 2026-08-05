@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sb.Framework.Chat.Telegram.MtProto</RootNamespace>
+    <AssemblyName>Sb.Framework.Chat.Telegram.MtProto</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageId>Sb.Framework.Chat.Telegram.MtProto</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Sb Framework</Authors>
+    <Description>SB Framework Chat 个人号通道适配器（MTProto，WTelegramClient）：会话生命周期/认证流程/Update 流/历史补拉/防撤回/媒体下载。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 开发期 ProjectReference；发包期自动转 PackageReference -->
+    <ProjectReference Include="..\Sb.Framework.Chat\Sb.Framework.Chat.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WTelegramClient" Version="4.2.1" />
+  </ItemGroup>
+
+</Project>

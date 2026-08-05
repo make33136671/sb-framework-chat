@@ -18,7 +18,7 @@
 | Step 1 | Core 通用工具（sb-framework） | ✅ **已完成**（5 个工具入库） |
 | Step 2 | SDK 核心（模型/Handler/Context/Account/存储/装配） | ✅ **已完成**（编译通过，入库） |
 | Step 3 | 增强基础（通知推送/发送队列/Mock 适配器） | ✅ **已完成**（编译通过） |
-| Step 4 | MtProtoAdapter 生产化 | 🚧 未开始 |
+| Step 4 | MtProtoAdapter 生产化（会话/同步/防撤回/媒体） | ✅ **已完成**（编译通过；需真实凭据验证） |
 | Step 5 | BotApiAdapter + 统一 Webhook 端点 | 🚧 未开始 |
 
 ---
@@ -65,10 +65,10 @@
 
 | 能力 | Bot | Personal | 阶段 |
 |------|-----|----------|------|
-| 收发文本/图片 | 🚧 未开始 | 🚧 未开始 | Phase1 |
+| 收发文本/图片 | 🚧 未开始 | 🔨 已实现待验证 | Phase1 |
 | 命令/回调/菜单 | 🚧 未开始 | — | Phase1 |
-| 撤回标记+内容保留 | — | 🚧 未开始 | Phase1 |
-| 历史补拉/会话同步 | — | 🚧 未开始 | Phase1 |
+| 撤回标记+内容保留 | — | 🔨 已实现待验证 | Phase1 |
+| 历史补拉/会话同步 | — | 🔨 占位（业务层按 ChatSyncState 驱动） | Phase1 |
 | Mini Apps / Web Apps | 🚧 未开始 | — | Phase1 |
 | 支付（Stars/Payments） | 🚧 未开始 | — | Phase2 |
 | 群聊/频道支持 | 🚧 未开始 | 🚧 未开始 | Phase2 |
@@ -77,10 +77,12 @@
 | 多设备/会话多开 | ❌ 未规划 | ❌ 未规划 | 未规划 |
 | 语音/视频通话 | ❌ 明确排除 | ❌ 明确排除 | 不做 |
 
+> 注：MtProto 通道（Step 4）代码已实现并编译通过，但**依赖真实 Telegram 凭据与网络**，需真实账号联调验证后转 ✅（撤回/发送/媒体下载均需实测）。媒体下载 dcId、发送 peer 解析为简化实现。
+
 ---
 
 ## 待补项
 
-- 无（Step 2 全部完成）。下一步：Step 3 增强基础 / Step 4 MtProtoAdapter / Step 5 BotApiAdapter。
+- 无（Step 1-4 已完成）。下一步：Step 5 BotApiAdapter + 统一 Webhook 端点 + 健康检查。
 
 > 完成即转 ✅。每完成一项即时更新本表。

@@ -65,6 +65,7 @@ public abstract class TelegramMessageHandler<TContext> where TContext : ChatCont
             RequestMessageImage image => await OnImageRequestAsync(image, cancellationToken).ConfigureAwait(false),
             RequestMessageCallback callback => await OnCallbackRequestAsync(callback, cancellationToken).ConfigureAwait(false),
             RequestMessageGroupEvent groupEvent => await OnGroupEventRequestAsync(groupEvent, cancellationToken).ConfigureAwait(false),
+            RequestMessageService service => await OnServiceRequestAsync(service, cancellationToken).ConfigureAwait(false),
             _ => await OnUnknownRequestAsync(request, cancellationToken).ConfigureAwait(false)
         };
     }
@@ -81,6 +82,10 @@ public abstract class TelegramMessageHandler<TContext> where TContext : ChatCont
         => DefaultAsync();
 
     protected virtual Task<TelegramResponseMessageBase?> OnGroupEventRequestAsync(RequestMessageGroupEvent message, CancellationToken ct)
+        => DefaultAsync();
+
+    /// <summary>服务消息（撤回信号/会话失效等）。防撤回审查可在此处理 withdrawn 标记落库。</summary>
+    protected virtual Task<TelegramResponseMessageBase?> OnServiceRequestAsync(RequestMessageService message, CancellationToken ct)
         => DefaultAsync();
 
     /// <summary>未知/自定义消息类型兜底。可注册自定义 RequestMessage + 对应处理器。</summary>
