@@ -20,6 +20,7 @@
 | Step 3 | 增强基础（通知推送/发送队列/Mock 适配器） | ✅ **已完成**（编译通过） |
 | Step 4 | MtProtoAdapter 生产化（会话/同步/防撤回/媒体） | ✅ **已完成**（编译通过；需真实凭据验证） |
 | Step 5 | BotApiAdapter + 统一 Webhook 端点 + 健康检查 | ✅ **已完成**（编译通过；需真实凭据验证） |
+| Step 6 | **SDK 单元测试**（Sb.Framework.Chat.Tests：MessageContainer/Handler/Mock/AccountContainer） | ✅ **已完成**（16 测试全过，2026-08-05） |
 
 ---
 
@@ -86,6 +87,16 @@
 - 双通道真实凭据联调验证（撤回/发送/媒体下载/webhook）
 - 通用消息中间件（敏感词/审计/关键词，Phase2）
 - Mini Apps / Web Apps 调用、支付（Phase2）
+
+## 已发现需决策的缺陷（2026-08-05，待拍板后修复）
+
+- **`ITelegramAdapter.SendAsync` 无 AccountId 参数，但 BotApiAdapter/MtProtoAdapter 用 `ResolveAccountIdFor(response)` 从 `PeerId` 拆账号前缀** —— 与契约矛盾（`ResponseMessageBase.PeerId` 是纯会话方 id）。发送队列已按 `QueuedSendRequest.AccountId` 路由，适配器应同样接收 AccountId。修复方案待定：
+  - A. 改接口 `SendAsync(accountId, response, ct)`（正确，破坏兼容，需同步改 2 适配器 + DefaultSendQueue + Mock）
+  - B. 发送队列入队时把 `accountId:` 前缀注入 `response.PeerId`（零接口变更，污染业务字段）
+  - C. 其他（业务层约定）
+- **`ResponseMessageCallbackAnswer.PeerId` 误用**：Bot `SendAsync` 把它当 callback id 传入 `AnswerCallbackQuery`，字段语义应是 callbackId。需新增 `CallbackId` 字段或重命名。
+
+> 结论：上述两项涉及公开接口契约，影响所有派生系统。按「先 SDK 后业务」原则，待产品负责人拍板方案后统一修复，避免反复返工。
 
 > 完成即转 ✅。每完成一项即时更新本表。
 

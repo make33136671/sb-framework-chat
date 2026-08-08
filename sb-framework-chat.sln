@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sb.Framework.Chat.Telegram.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sb.Framework.Chat.Telegram", "Sb.Framework.Chat.Telegram\Sb.Framework.Chat.Telegram.csproj", "{F71E00B6-926C-49C1-984E-9D8C6B377657}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sb.Framework.Chat.Tests", "Sb.Framework.Chat.Tests\Sb.Framework.Chat.Tests.csproj", "{69C8141D-19BF-4073-9CDE-18A1C228DCE5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{F71E00B6-926C-49C1-984E-9D8C6B377657}.Release|x64.Build.0 = Release|Any CPU
 		{F71E00B6-926C-49C1-984E-9D8C6B377657}.Release|x86.ActiveCfg = Release|Any CPU
 		{F71E00B6-926C-49C1-984E-9D8C6B377657}.Release|x86.Build.0 = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|x64.Build.0 = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Debug|x86.Build.0 = Debug|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|x64.ActiveCfg = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|x64.Build.0 = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|x86.ActiveCfg = Release|Any CPU
+		{69C8141D-19BF-4073-9CDE-18A1C228DCE5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
