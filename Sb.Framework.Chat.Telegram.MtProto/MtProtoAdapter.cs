@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.Sockets;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Sb.Framework.Chat.Account;
@@ -47,6 +48,8 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
         public CancellationTokenSource Cts = new();
         // 防撤回：消息 id → 文件定位（撤回前已可下载的引用缓存）
         public ConcurrentDictionary<string, InputFileLocationBase> FileLocations = new();
+        // 代理隧道 TcpClient（使用代理时持有，随连接一起释放）
+        public TcpClient? ProxyTcpClient;
     }
 
     // ---- ITelegramAdapter ----
@@ -73,6 +76,7 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
         {
             conn.Cts.Cancel();
             conn.Client?.Dispose();
+            conn.ProxyTcpClient?.Dispose();
             AccountContainer.UpdateState(account.AccountId, AccountSessionState.Disconnected);
         }
         return Task.CompletedTask;
@@ -162,7 +166,19 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
             // 认证桥：同步 ConfigProvider ← 异步 IAuthProvider
             var bridge = new AuthBridge(_authProvider, account.AccountId, _logger);
 
-            conn.Client = new WTelegram.Client(what => bridge.ConfigProvider(what, sessionPath, account, _options));
+            // 代理隧道：配置了代理时通过 SOCKS5/HTTP 隧道连接 Telegram DC
+            Stream? proxyStream = null;
+            if (_options.MtProto.Proxy.Enabled)
+            {
+                _logger.LogInformation("通过代理连接 Telegram: {Type} {Host}:{Port}",
+                    _options.MtProto.Proxy.Type, _options.MtProto.Proxy.Host, _options.MtProto.Proxy.Port);
+                conn.ProxyTcpClient = await ProxyTcpClientFactory.CreateAsync(_options.MtProto.Proxy, ct).ConfigureAwait(false);
+                proxyStream = conn.ProxyTcpClient!.GetStream();
+            }
+
+            conn.Client = proxyStream != null
+                ? new WTelegram.Client(what => bridge.ConfigProvider(what, sessionPath, account, _options), proxyStream)
+                : new WTelegram.Client(what => bridge.ConfigProvider(what, sessionPath, account, _options));
             conn.Client.OnUpdates += updates => HandleUpdatesAsync(account.AccountId, conn, updates);
 
             // 会话恢复 / 登录
@@ -181,7 +197,7 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
         }
     }
 
-    private Task HandleUpdatesAsync(string accountId, AccountConnection conn, UpdatesBase updates)
+    private async Task HandleUpdatesAsync(string accountId, AccountConnection conn, UpdatesBase updates)
     {
         foreach (var update in updates.UpdateList)
         {
@@ -189,16 +205,15 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
             {
                 if (update is UpdateNewMessage unm && unm.message is Message msg)
                 {
-                    ProcessMessage(accountId, conn, msg, updates.Users);
+                    await ProcessMessageAsync(accountId, conn, msg, updates.Users).ConfigureAwait(false);
                 }
                 else if (update is UpdateNewChannelMessage uncm && uncm.message is Message channelMsg)
                 {
-                    ProcessMessage(accountId, conn, channelMsg, updates.Users);
+                    await ProcessMessageAsync(accountId, conn, channelMsg, updates.Users).ConfigureAwait(false);
                 }
                 else if (update is UpdateDeleteMessages del)
                 {
                     // 防撤回：内容已入库（收到即存），此处仅发撤回信号（内容保留）。
-                    // PeerId 无法从删除更新直接取得，靠上层按 (accountId + messageId) 关联标记。
                     conn.Inbox.Writer.TryWrite(new RequestMessageService
                     {
                         AccountId = accountId,
@@ -215,10 +230,9 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
                 _logger.LogWarning(ex, "处理 Update 失败: {AccountId}", accountId);
             }
         }
-        return Task.CompletedTask;
     }
 
-    private void ProcessMessage(string accountId, AccountConnection conn, Message msg, IDictionary<long, User> users)
+    private async Task ProcessMessageAsync(string accountId, AccountConnection conn, Message msg, IDictionary<long, User> users)
     {
         var peerId = ResolvePeerId(msg.peer_id);
         var direction = (msg.flags & Message.Flags.out_) != 0
@@ -226,13 +240,25 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
             : MessageDirection.Incoming;
         var ts = DateTime.SpecifyKind(msg.date, DateTimeKind.Utc);
 
-        TelegramRequestMessageBase? unified = msg.media switch
+        // 分类媒体
+        var (mediaCategory, doc) = ClassifyMedia(msg.media);
+
+        TelegramRequestMessageBase? unified;
+        if (mediaCategory == "image")
         {
-            MessageMediaPhoto photo => ToImageMessage(accountId, peerId, msg, ts, direction, photo),
-            MessageMediaDocument { document: Document doc } when doc.mime_type?.StartsWith("image/") == true
-                => ToImageMessage(accountId, peerId, msg, ts, direction, null, doc),
-            _ when string.IsNullOrEmpty(msg.message) => null, // 非文本非图片（视频/语音/文件等）Phase 2
-            _ => new RequestMessageText
+            unified = ToImageMessage(accountId, peerId, msg, ts, direction, msg.media as MessageMediaPhoto, doc);
+        }
+        else if (mediaCategory is "video" or "voice" or "file" or "sticker")
+        {
+            unified = ToFileMessage(accountId, peerId, msg, ts, direction, mediaCategory, doc);
+        }
+        else if (string.IsNullOrEmpty(msg.message))
+        {
+            unified = null; // 纯服务消息（无文本无媒体）
+        }
+        else
+        {
+            unified = new RequestMessageText
             {
                 AccountId = accountId,
                 PeerId = peerId,
@@ -241,16 +267,43 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
                 Timestamp = ts,
                 Content = msg.message ?? "",
                 ReplyToMessageId = msg.reply_to is MessageReplyHeader r ? r.reply_to_msg_id.ToString() : null,
-            }
-        };
-
-        if (unified != null)
-        {
-            conn.Inbox.Writer.TryWrite(unified);
-            // 缓存文件定位（防撤回：撤回前可下载）
-            CacheFileLocation(accountId, conn, msg);
+            };
         }
+
+        if (unified == null) return;
+
+        // 防撤回核心：媒体到达时立即下载（在推入 inbox 之前完成，确保撤回前已落盘）
+        if (msg.media != null && mediaCategory != null)
+        {
+            await TryAutoDownloadAsync(accountId, conn, msg, unified, mediaCategory, doc).ConfigureAwait(false);
+        }
+
+        CacheFileLocation(accountId, conn, msg);
+        conn.Inbox.Writer.TryWrite(unified);
     }
+
+    /// <summary>分类 Telegram 媒体类型 → TgVault 统一分类。</summary>
+    private static (string? category, Document? doc) ClassifyMedia(MessageMedia? media)
+    {
+        return media switch
+        {
+            MessageMediaPhoto => ("image", null),
+            MessageMediaDocument { document: Document d } when d.mime_type?.StartsWith("image/") == true
+                => ("image", d),
+            MessageMediaDocument { document: Document d } when d.mime_type?.StartsWith("video/") == true
+                => ("video", d),
+            MessageMediaDocument { document: Document d } when d.mime_type?.StartsWith("audio/") == true
+                => ("voice", d),
+            MessageMediaDocument { document: Document d } when IsSticker(d)
+                => ("sticker", d),
+            MessageMediaDocument { document: Document d }
+                => ("file", d),
+            _ => (null, null),
+        };
+    }
+
+    private static bool IsSticker(Document d)
+        => d.attributes?.Any(a => a is DocumentAttributeSticker) == true;
 
     private static TelegramRequestMessageBase? ToImageMessage(
         string accountId, string peerId, Message msg, DateTime ts, MessageDirection direction,
@@ -271,8 +324,47 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
                 MediaId = msg.id.ToString(),
                 Size = p?.sizes?.OfType<PhotoSize>().LastOrDefault()?.size ?? doc?.size ?? 0,
                 MimeType = photo != null ? "image/jpeg" : (doc?.mime_type ?? "image"),
+                FileName = GetDocumentFilename(doc),
             },
         };
+    }
+
+    private static TelegramRequestMessageBase ToFileMessage(
+        string accountId, string peerId, Message msg, DateTime ts, MessageDirection direction,
+        string category, Document doc)
+    {
+        MediaBase media = category switch
+        {
+            "video" => new VideoMedia(),
+            "voice" => new VoiceMedia(),
+            "sticker" => new StickerMedia(),
+            _ => new FileMedia(),
+        };
+        media.MediaId = msg.id.ToString();
+        media.Size = doc.size;
+        media.MimeType = doc.mime_type ?? "application/octet-stream";
+        media.FileName = GetDocumentFilename(doc);
+
+        return new RequestMessageFile
+        {
+            AccountId = accountId,
+            PeerId = peerId,
+            MessageId = msg.id,
+            Direction = direction,
+            Timestamp = ts,
+            FileCategory = category,
+            Caption = msg.message,
+            ReplyToMessageId = msg.reply_to is MessageReplyHeader r ? r.reply_to_msg_id.ToString() : null,
+            Media = media,
+        };
+    }
+
+    /// <summary>从 Document.attributes 提取原始文件名。</summary>
+    private static string? GetDocumentFilename(Document? doc)
+    {
+        if (doc?.attributes == null) return null;
+        var attr = doc.attributes.OfType<DocumentAttributeFilename>().FirstOrDefault();
+        return attr?.file_name;
     }
 
     /// <summary>缓存消息媒体定位（防撤回：撤回前下载用）。</summary>
@@ -302,6 +394,141 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "缓存文件定位失败: {AccountId} msg={Id}", accountId, msg.id);
+        }
+    }
+
+    // ---- 防撤回：入站媒体自动下载 ----
+
+    /// <summary>根据配置判断是否应自动下载该媒体。</summary>
+    private bool ShouldAutoDownload(string category, Document? doc)
+    {
+        var cfg = _options.MtProto.AutoDownload;
+        if (!cfg.Enabled) return false;
+
+        var allowed = category switch
+        {
+            "image" => cfg.DownloadImages,
+            "video" => cfg.DownloadVideos,
+            "voice" => cfg.DownloadVoice,
+            "file" => cfg.DownloadFiles,
+            "sticker" => cfg.DownloadStickers,
+            _ => false,
+        };
+        if (!allowed) return false;
+
+        // 文件大小限制（doc.size 为 0 时视为未知，不拦截）
+        var maxBytes = cfg.MaxFileSizeMB * 1024L * 1024L;
+        if (doc?.size > 0 && doc.size > maxBytes)
+        {
+            _logger.LogDebug("跳过自动下载：文件超限 {Size} > {Max}MB", doc.size, cfg.MaxFileSizeMB);
+            return false;
+        }
+
+        // 扩展名过滤
+        var ext = GetFileExtension(doc);
+        if (!string.IsNullOrEmpty(ext))
+        {
+            if (cfg.BlockedExtensions.Count > 0
+                && cfg.BlockedExtensions.Any(b => string.Equals(b.Trim(), ext, StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogDebug("跳过自动下载：扩展名被禁止 {Ext}", ext);
+                return false;
+            }
+            if (cfg.AllowedExtensions.Count > 0
+                && !cfg.AllowedExtensions.Any(a => string.Equals(a.Trim(), ext, StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogDebug("跳过自动下载：扩展名不在白名单 {Ext}", ext);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string GetFileExtension(Document? doc)
+    {
+        if (doc?.mime_type == null) return "";
+        var idx = doc.mime_type.IndexOf('/');
+        return idx >= 0 ? $".{doc.mime_type[(idx + 1)..]}" : "";
+    }
+
+    /// <summary>
+    /// 下载入站媒体到服务器本地，设置 LocalUrl（防撤回：撤回后仍可访问）。
+    /// 下载失败不阻塞消息流转（消息照常入库，LocalUrl 为空表示未捕获）。
+    /// </summary>
+    private async Task TryAutoDownloadAsync(
+        string accountId, AccountConnection conn, Message msg, TelegramRequestMessageBase unified,
+        string category, Document? doc)
+    {
+        if (!ShouldAutoDownload(category, doc)) return;
+
+        InputFileLocationBase? location = msg.media switch
+        {
+            MessageMediaPhoto { photo: Photo p } => new InputPhotoFileLocation
+            {
+                id = p.id,
+                access_hash = p.access_hash,
+                file_reference = p.file_reference,
+            },
+            MessageMediaDocument { document: Document d } => new InputDocumentFileLocation
+            {
+                id = d.id,
+                access_hash = d.access_hash,
+                file_reference = d.file_reference,
+            },
+            _ => null,
+        };
+        if (location == null) return;
+
+        var fileName = ResolveOutputFileName(msg.id, category, doc);
+        var relativeUrl = $"/storage/chat/{accountId}/{fileName}";
+        var fullPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "storage", "chat", accountId, fileName);
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            using var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await conn.Client.DownloadFileAsync(location, fs, 0, 0, null).ConfigureAwait(false);
+            fs.Flush();
+
+            SetLocalUrl(unified, relativeUrl);
+            _logger.LogInformation("防撤回自动下载成功: account={AccountId} msg={MsgId} type={Type} url={Url}",
+                accountId, msg.id, category, relativeUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "防撤回自动下载失败: account={AccountId} msg={MsgId} type={Type}",
+                accountId, msg.id, category);
+            try { if (File.Exists(fullPath)) File.Delete(fullPath); } catch { }
+        }
+    }
+
+    private static string ResolveOutputFileName(long msgId, string category, Document? doc)
+    {
+        var rawName = GetDocumentFilename(doc);
+        var ext = Path.GetExtension(rawName);
+        if (string.IsNullOrEmpty(ext))
+            ext = GetFileExtension(doc);
+
+        var safeName = string.IsNullOrEmpty(rawName) ? category : Path.GetFileNameWithoutExtension(rawName);
+        // 清理非法文件名字符
+        var invalid = Path.GetInvalidFileNameChars();
+        safeName = new string(safeName.Where(c => !invalid.Contains(c)).ToArray());
+        if (string.IsNullOrWhiteSpace(safeName)) safeName = category;
+
+        return $"{msgId}_{safeName}{ext}";
+    }
+
+    private static void SetLocalUrl(TelegramRequestMessageBase unified, string relativeUrl)
+    {
+        switch (unified)
+        {
+            case RequestMessageImage img when img.Media != null:
+                img.Media.LocalUrl = relativeUrl;
+                break;
+            case RequestMessageFile f when f.Media != null:
+                f.Media.LocalUrl = relativeUrl;
+                break;
         }
     }
 
@@ -369,6 +596,7 @@ public sealed class MtProtoAdapter : ITelegramAdapter, IDisposable
         {
             conn.Cts.Cancel();
             conn.Client?.Dispose();
+            conn.ProxyTcpClient?.Dispose();
         }
         _connections.Clear();
     }

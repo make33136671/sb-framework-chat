@@ -11,29 +11,25 @@ public abstract class MediaBase
     public long Size { get; set; }
 
     public string? MimeType { get; set; }
-}
 
-/// <summary>图片媒体（Phase 1）。</summary>
-public sealed class ImageMedia : MediaBase
-{
-    /// <summary>本地落盘后的相对 URL（撤回前已下载，防撤回保留）。</summary>
+    /// <summary>本地落盘后的相对 URL（防撤回：撤回前已下载，内容保留）。</summary>
     public string? LocalUrl { get; set; }
-}
 
-/// <summary>视频媒体（Phase 2）。</summary>
-public sealed class VideoMedia : MediaBase
-{
-    public string? LocalUrl { get; set; }
-}
-
-/// <summary>语音媒体（Phase 2）。</summary>
-public sealed class VoiceMedia : MediaBase { }
-
-/// <summary>文件媒体（Phase 2）。</summary>
-public sealed class FileMedia : MediaBase
-{
+    /// <summary>原始文件名（Document 属性，照片无）。</summary>
     public string? FileName { get; set; }
 }
+
+/// <summary>图片媒体。</summary>
+public sealed class ImageMedia : MediaBase { }
+
+/// <summary>视频媒体。</summary>
+public sealed class VideoMedia : MediaBase { }
+
+/// <summary>语音媒体。</summary>
+public sealed class VoiceMedia : MediaBase { }
+
+/// <summary>文件媒体。</summary>
+public sealed class FileMedia : MediaBase { }
 
 /// <summary>贴纸媒体。</summary>
 public sealed class StickerMedia : MediaBase { }

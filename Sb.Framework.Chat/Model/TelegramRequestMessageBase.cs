@@ -43,12 +43,28 @@ public sealed class RequestMessageText : TelegramRequestMessageBase
     public string Content { get; set; } = "";
 }
 
-/// <summary>图片消息（Phase 1）。</summary>
+/// <summary>图片消息。</summary>
 public sealed class RequestMessageImage : TelegramRequestMessageBase
 {
     public ImageMedia? Media { get; set; }
 
     /// <summary>图片说明文字（如有）。</summary>
+    public string? Caption { get; set; }
+}
+
+/// <summary>
+/// 文件消息（视频/语音/普通文件/贴纸等非图片媒体）。
+/// 防撤回关键：媒体到达时自动下载，撤回后仍可访问。
+/// </summary>
+public sealed class RequestMessageFile : TelegramRequestMessageBase
+{
+    /// <summary>媒体类型分类：Video / Voice / File / Sticker。</summary>
+    public string FileCategory { get; set; } = "File";
+
+    /// <summary>媒体元数据（含 LocalUrl 防撤回路径）。</summary>
+    public MediaBase? Media { get; set; }
+
+    /// <summary>附带文字（文件的 caption / 视频说明）。</summary>
     public string? Caption { get; set; }
 }
 
