@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Sb.Framework.Chat.Adapter;
 using Sb.Framework.Chat.Model;
 
@@ -39,7 +39,7 @@ public sealed class DefaultNotificationService : INotificationService
 
         var response = new ResponseMessageText
         {
-            PeerId = peerId,
+            PeerId = $"{accountId}:{peerId}",
             ReplyToMessageId = replyToMessageId,
             Content = content,
         };
@@ -47,7 +47,7 @@ public sealed class DefaultNotificationService : INotificationService
         await _queue.EnqueueAsync(new QueuedSendRequest
         {
             AccountId = accountId,
-            PeerId = peerId,
+            PeerId = $"{accountId}:{peerId}",
             Message = response,
         }, ct).ConfigureAwait(false);
 
@@ -69,14 +69,14 @@ public sealed class DefaultNotificationService : INotificationService
 
         var response = new ResponseMessageImage
         {
-            PeerId = peerId,
+            PeerId = $"{accountId}:{peerId}",
             Media = media,
         };
 
         await _queue.EnqueueAsync(new QueuedSendRequest
         {
             AccountId = accountId,
-            PeerId = peerId,
+            PeerId = $"{accountId}:{peerId}",
             Message = response,
         }, ct).ConfigureAwait(false);
 
