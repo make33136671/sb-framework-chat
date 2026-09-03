@@ -40,6 +40,19 @@ public sealed class MockTelegramAdapter : ITelegramAdapter
         return Task.CompletedTask;
     }
 
+    public Task StartQrLoginAsync(AccountBag account, Action<string>? onQrToken, CancellationToken ct)
+    {
+        onQrToken?.Invoke("MOCK_QR_TOKEN");
+        _connected = true;
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<DialogInfo>> SyncDialogsAsync(AccountBag account, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<DialogInfo>>([]);
+
+    public Task<IReadOnlyList<TelegramRequestMessageBase>> FetchHistoryAsync(AccountBag account, string peerId, int limit, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<TelegramRequestMessageBase>>([]);
+
     public Task DisconnectAsync(AccountBag account)
     {
         _connected = false;

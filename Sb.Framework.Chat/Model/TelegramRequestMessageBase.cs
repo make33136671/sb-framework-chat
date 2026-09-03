@@ -35,6 +35,21 @@ public abstract class TelegramRequestMessageBase
 
     /// <summary>被回复消息的 id（如有）。</summary>
     public string? ReplyToMessageId { get; set; }
+
+    /// <summary>发送者 id（群聊/私聊中消息来源；空=系统/未知）。</summary>
+    public string SenderId { get; set; } = "";
+
+    /// <summary>发送者显示名（用户=姓名，频道=频道名；群聊消息头展示用）。</summary>
+    public string SenderName { get; set; } = "";
+
+    /// <summary>发送者头像本地相对 URL（群聊展示用，无则空）。</summary>
+    public string? SenderAvatar { get; set; }
+
+    /// <summary>是否提及了当前账号（@自己），列表与消息气泡需明显标记。</summary>
+    public bool IsMention { get; set; }
+
+    /// <summary>是否直接回复（引用）了当前账号的消息（群聊提醒用）。</summary>
+    public bool IsReplyToMine { get; set; }
 }
 
 /// <summary>文本消息。</summary>

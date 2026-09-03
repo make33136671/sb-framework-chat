@@ -133,6 +133,22 @@ public sealed class BotApiAdapter : ITelegramAdapter, IDisposable
         _ => false
     };
 
+    /// <summary>Bot 通道不支持二维码登录（MTProto 个人号专属）。</summary>
+    public Task StartQrLoginAsync(AccountBag account, Action<string>? onQrToken, CancellationToken ct)
+        => throw new NotSupportedException("Bot 通道不支持二维码登录，仅 MTProto 个人号支持");
+
+    /// <summary>Bot API 无法枚举 Bot 所在的全部会话，返回空列表。</summary>
+    public Task<IReadOnlyList<DialogInfo>> SyncDialogsAsync(AccountBag account, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<DialogInfo>>(Array.Empty<DialogInfo>());
+
+    /// <summary>
+    /// Bot 通道暂不支持历史拉取：当前 Telegram.Bot SDK(22.x) 未暴露 Bot API 的 getChatHistory 方法。
+    /// 需要时可通过 SDK 底层 HTTP 客户端直连 /getChatHistory 端点补齐。
+    /// </summary>
+    public Task<IReadOnlyList<TelegramRequestMessageBase>> FetchHistoryAsync(
+        AccountBag account, string peerId, int limit, CancellationToken ct)
+        => throw new NotSupportedException("Bot 通道暂不支持历史消息拉取（SDK 未暴露 getChatHistory）");
+
     // ---- 内部 ----
 
     private static string ResolveAccountIdFor(TelegramResponseMessageBase response)
@@ -197,13 +213,20 @@ public sealed class BotApiAdapter : ITelegramAdapter, IDisposable
     private void ProcessMessage(string accountId, AccountConnection conn, Message message)
     {
         var peerId = message.Chat.Id.ToString();
+        var unified = BuildUnifiedMessage(accountId, peerId, message);
+        if (unified != null)
+            conn.Inbox.Writer.TryWrite(unified);
+    }
+
+    /// <summary>把 Bot API 的 Message 归一化为统一消息模型（实时入站与历史拉取共用）。</summary>
+    private static TelegramRequestMessageBase? BuildUnifiedMessage(string accountId, string peerId, Message message)
+    {
         var ts = DateTime.SpecifyKind(message.Date, DateTimeKind.Utc);
 
-        TelegramRequestMessageBase? unified = null;
         if (message.Photo is { Length: > 0 })
         {
             var largest = message.Photo[^1];
-            unified = new RequestMessageImage
+            return new RequestMessageImage
             {
                 AccountId = accountId,
                 PeerId = peerId,
@@ -220,9 +243,10 @@ public sealed class BotApiAdapter : ITelegramAdapter, IDisposable
                 },
             };
         }
-        else if (!string.IsNullOrEmpty(message.Text) || !string.IsNullOrEmpty(message.Caption))
+
+        if (!string.IsNullOrEmpty(message.Text) || !string.IsNullOrEmpty(message.Caption))
         {
-            unified = new RequestMessageText
+            return new RequestMessageText
             {
                 AccountId = accountId,
                 PeerId = peerId,
@@ -234,8 +258,7 @@ public sealed class BotApiAdapter : ITelegramAdapter, IDisposable
             };
         }
 
-        if (unified != null)
-            conn.Inbox.Writer.TryWrite(unified);
+        return null;
     }
 
     private void ProcessCallbackQuery(string accountId, AccountConnection conn, CallbackQuery callback)

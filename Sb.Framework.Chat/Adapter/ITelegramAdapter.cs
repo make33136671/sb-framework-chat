@@ -15,6 +15,19 @@ public interface ITelegramAdapter
     /// <summary>连接账号（建立长连接 / 注册 webhook / 登录会话）。</summary>
     Task ConnectAsync(AccountBag account, CancellationToken ct);
 
+    /// <summary>
+    /// 启动二维码登录（WTelegramClient.LoginWithQRCode）。
+    /// 二维码 token 通过 onQrToken 持续推送（登录期间 token 可能自动刷新），
+    /// 扫码确认成功后自动落盘会话并进入 Ready 状态。
+    /// </summary>
+    Task StartQrLoginAsync(AccountBag account, Action<string>? onQrToken, CancellationToken ct);
+
+    /// <summary>拉取账号的真实会话列表（dialog 同步，含标题/类型/最后消息时间）。</summary>
+    Task<IReadOnlyList<DialogInfo>> SyncDialogsAsync(AccountBag account, CancellationToken ct);
+
+    /// <summary>拉取指定会话的最近历史消息（归一化消息，供业务层落库）。</summary>
+    Task<IReadOnlyList<TelegramRequestMessageBase>> FetchHistoryAsync(AccountBag account, string peerId, int limit, CancellationToken ct);
+
     /// <summary>断开账号连接。</summary>
     Task DisconnectAsync(AccountBag account);
 

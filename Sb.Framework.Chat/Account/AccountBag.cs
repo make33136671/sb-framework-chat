@@ -25,6 +25,9 @@ public sealed class AccountBag
     /// <summary>最后活跃时间（UTC）。</summary>
     public DateTime LastActiveTime { get; set; } = SB.Framework.Core.Util.AppTime.UtcNow;
 
+    /// <summary>最近一次连接/认证失败原因（供业务层展示真实错误，如 api_hash 无效）。</summary>
+    public string? LastError { get; set; }
+
     /// <summary>凭证（运行期内存持有，实现可插拔，不直接暴露明文）。</summary>
     public AccountCredential Credential { get; set; } = new();
 }

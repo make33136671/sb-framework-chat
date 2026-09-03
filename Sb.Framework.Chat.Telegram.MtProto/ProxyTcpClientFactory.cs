@@ -17,9 +17,12 @@ internal static class ProxyTcpClientFactory
     public const int DefaultDcPort = 443;
 
     /// <summary>
-    /// 按代理配置创建已连接的 TcpClient；代理未启用时返回 null（交由 WTelegramClient 直连）。
+    /// 按代理配置创建已通过代理握手、连接到指定目标地址的 TcpClient。
+    /// 由 WTelegramClient 的 TcpHandler 调用：目标地址是 Telegram DC（含 DC 迁移时的任意 DC 地址）。
+    /// 代理未启用时返回 null（交由 WTelegramClient 直连）。
     /// </summary>
-    public static async Task<TcpClient?> CreateAsync(TelegramProxyOptions? proxy, CancellationToken ct = default)
+    public static async Task<TcpClient?> CreateAsync(TelegramProxyOptions? proxy, string host, int port,
+        CancellationToken ct = default)
     {
         if (proxy == null || !proxy.Enabled)
             return null;
@@ -40,9 +43,9 @@ internal static class ProxyTcpClientFactory
         try
         {
             if (type == "SOCKS5")
-                await Socks5HandshakeAsync(stream, proxy, ct).ConfigureAwait(false);
+                await Socks5HandshakeAsync(stream, proxy, host, port, ct).ConfigureAwait(false);
             else if (type == "HTTP")
-                await HttpConnectHandshakeAsync(stream, proxy, ct).ConfigureAwait(false);
+                await HttpConnectHandshakeAsync(stream, proxy, host, port, ct).ConfigureAwait(false);
             else
                 throw new NotSupportedException($"不支持的代理类型: {proxy.Type}（仅支持 Socks5 / Http）");
         }
@@ -57,7 +60,8 @@ internal static class ProxyTcpClientFactory
 
     // ---- SOCKS5 ----
 
-    private static async Task Socks5HandshakeAsync(NetworkStream stream, TelegramProxyOptions proxy, CancellationToken ct)
+    private static async Task Socks5HandshakeAsync(NetworkStream stream, TelegramProxyOptions proxy,
+        string targetHost, int targetPort, CancellationToken ct)
     {
         var hasAuth = !string.IsNullOrEmpty(proxy.Username);
 
@@ -98,8 +102,8 @@ internal static class ProxyTcpClientFactory
                 throw new InvalidOperationException("SOCKS5 认证失败：用户名或密码错误");
         }
 
-        // 3. CONNECT 请求（用域名，兼容 DC 迁移时的地址）
-        var host = Encoding.UTF8.GetBytes(DefaultDcHost);
+        // 3. CONNECT 请求（目标以域名类型发送：兼容域名与 IPv4/IPv6 字面量，代理端可解析任意形式）
+        var host = Encoding.UTF8.GetBytes(targetHost);
         var connectReq = new byte[7 + host.Length];
         connectReq[0] = 0x05;   // VER
         connectReq[1] = 0x01;   // CMD=CONNECT
@@ -107,7 +111,7 @@ internal static class ProxyTcpClientFactory
         connectReq[3] = 0x03;   // ATYP=DOMAINNAME
         connectReq[4] = (byte)host.Length;
         Buffer.BlockCopy(host, 0, connectReq, 5, host.Length);
-        BinaryPrimitives.WriteUInt16BigEndian(connectReq.AsSpan(5 + host.Length), (ushort)DefaultDcPort);
+        BinaryPrimitives.WriteUInt16BigEndian(connectReq.AsSpan(5 + host.Length), (ushort)targetPort);
 
         await stream.WriteAsync(connectReq, ct).ConfigureAwait(false);
 
@@ -141,9 +145,10 @@ internal static class ProxyTcpClientFactory
 
     // ---- HTTP CONNECT ----
 
-    private static async Task HttpConnectHandshakeAsync(NetworkStream stream, TelegramProxyOptions proxy, CancellationToken ct)
+    private static async Task HttpConnectHandshakeAsync(NetworkStream stream, TelegramProxyOptions proxy,
+        string targetHost, int targetPort, CancellationToken ct)
     {
-        var target = $"{DefaultDcHost}:{DefaultDcPort}";
+        var target = $"{targetHost}:{targetPort}";
         var sb = new StringBuilder();
         sb.Append($"CONNECT {target} HTTP/1.1\r\n");
         sb.Append($"Host: {target}\r\n");
