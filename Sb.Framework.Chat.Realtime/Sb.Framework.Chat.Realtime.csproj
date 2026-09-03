@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sb.Framework.Chat.Realtime</RootNamespace>
+    <AssemblyName>Sb.Framework.Chat.Realtime</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageId>Sb.Framework.Chat.Realtime</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Sb Framework</Authors>
+    <Description>SB Framework Realtime 统一实时通讯底座（OpenIM 替代）：SignalR Hub、消息收发/持久化、会话/在线状态/已读回执、媒体。客服等业务系统复用。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 本地源码引用 sb-framework（dotnet pack 自动将 ProjectReference 转为对应版本的包依赖，发布能力不受影响）。
+         平台 D33：本地联调优先，避免与本地 ProjectReference 消费方产生同名 DLL 冲突（CS1704）。 -->
+    <ProjectReference Include="..\..\sb-framework\SB.Framework.Core\SB.Framework.Core.csproj" />
+    <ProjectReference Include="..\..\sb-framework\SB.Framework.Models\SB.Framework.Models.csproj" />
+  </ItemGroup>
+
+  <!-- SignalR Hub + HubContext 需要 ASP.NET Core 共享框架（Microsoft.AspNetCore.App）。 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

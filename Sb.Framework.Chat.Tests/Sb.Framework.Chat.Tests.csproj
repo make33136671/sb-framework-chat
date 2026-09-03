@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sb.Framework.Chat\Sb.Framework.Chat.csproj" />
     <ProjectReference Include="..\Sb.Framework.Chat.Telegram\Sb.Framework.Chat.Telegram.csproj" />
+    <ProjectReference Include="..\Sb.Framework.Chat.Realtime\Sb.Framework.Chat.Realtime.csproj" />
   </ItemGroup>
 
 </Project>
