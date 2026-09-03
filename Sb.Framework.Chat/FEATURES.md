@@ -58,9 +58,36 @@
 | 统一通知推送 `INotificationService` | ✅ **已完成**（DefaultNotificationService） | Phase1 |
 | 内置发送队列 + 频率控制 | ✅ **已完成**（DefaultSendQueue：Channel+限速+重试+保序） | Phase1 |
 | Mock 适配器（开发/测试） | ✅ **已完成**（MockTelegramAdapter + AddTelegramMockAdapter） | Phase1 |
-| 内置统一 Webhook 端点 | 🚧 未开始 | Phase1 |
-| 账号健康度 → /health | 🚧 未开始 | Phase1 |
+| 内置统一 Webhook 端点 | ✅ **已完成**（TelegramWebhookController 统一端点 + 按 token 路由账号） | Phase1 |
+| 账号健康度 → /health | ✅ **已完成**（TelegramAccountHealthCheck + RealtimeHealthEndpoint） | Phase1 |
 | 通用消息中间件（敏感词/审计/关键词） | 🚧 未开始 | Phase2 |
+
+## 三-A、适配器生产化增强（2026-08~09 未提交波次，已入库）
+
+| 能力 | Bot | Personal | 说明 |
+|------|-----|----------|------|
+| 二维码登录 StartQrLoginAsync | ❌（通道不支持） | ✅ | WTelegramClient.LoginWithQRCode，token 回调推送，成功自动落盘会话 |
+| 会话列表同步 SyncDialogsAsync | ❌（Bot API 无枚举能力，返回空） | ✅ | messages.getAllDialogs，含头像下载到 wwwroot，InputPeer 缓存 |
+| 历史消息拉取 FetchHistoryAsync | ❌（SDK 未暴露） | ✅ | messages.getHistory，归一化为统一消息模型 |
+| 发送者字段（SenderId/SenderName/头像/IsMention/IsReplyToMine） | ✅ | ✅ | 群聊消息头/提及提醒所需 |
+| MTProto 代理隧道 | — | ✅ | SOCKS5/HTTP 经 TcpHandler 挂钩（含 DC 迁移），代理 socket 随连接释放 |
+| 媒体下载策略 IMediaDownloadPolicyProvider | ✅ | ✅ | 业务可插拔控制自动下载（大小/扩展名黑白名单） |
+| 防撤回媒体立即下载 | — | ✅ | 媒体到达先落盘再入 inbox，撤回后仍可访问 |
+
+## 三-B、Realtime 通信保障层（Sb.Framework.Chat.Realtime）✅ 0.1.0-preview.1
+
+| 能力 | 状态 |
+|------|------|
+| SignalR Hub（认证/消息/会话/已读/在线） | ✅ |
+| PresenceService 在线状态 + 心跳超时清理 | ✅（9 单测全过） |
+| ConnectionRateLimitFilter 连接限流 | ✅ |
+| 消息落库 + 投递状态机（MessageDeliveryService） | ✅ |
+| 会话/未读/已读水位（Conversation/ReadState/Media） | ✅ |
+| IRealtimeAuthProvider / IRealtimeUserProvider / IRealtimeEventSink 可插拔 | ✅（默认兜底实现） |
+| 前端 @sb/realtime-core（重连/断路器/Token 续期） | ✅（sb-framework-chat-js） |
+| 前端 @sb/chat-ui（Shadow DOM 插件化 UI） | ✅（sb-framework-chat-js） |
+
+> 方案文档见家族文档《10-Chat.Realtime-通信保障层升级方案》。
 
 ## 四、通道适配器
 
@@ -84,19 +111,20 @@
 
 ## 待补项
 
-- 双通道真实凭据联调验证（撤回/发送/媒体下载/webhook）
+- 双通道真实凭据联调验证（撤回/发送/媒体下载/webhook/二维码登录/历史拉取）
+- Realtime 层真实环境联调（多端在线/弱网重连/媒体上传，见文档 10）
+- `ResponseMessageCallbackAnswer` 增加 CallbackId 字段（待拍板）
 - 通用消息中间件（敏感词/审计/关键词，Phase2）
 - Mini Apps / Web Apps 调用、支付（Phase2）
 
-## 已发现需决策的缺陷（2026-08-05，待拍板后修复）
+## 已发现需决策的缺陷
 
-- **`ITelegramAdapter.SendAsync` 无 AccountId 参数，但 BotApiAdapter/MtProtoAdapter 用 `ResolveAccountIdFor(response)` 从 `PeerId` 拆账号前缀** —— 与契约矛盾（`ResponseMessageBase.PeerId` 是纯会话方 id）。发送队列已按 `QueuedSendRequest.AccountId` 路由，适配器应同样接收 AccountId。修复方案待定：
-  - A. 改接口 `SendAsync(accountId, response, ct)`（正确，破坏兼容，需同步改 2 适配器 + DefaultSendQueue + Mock）
-  - B. 发送队列入队时把 `accountId:` 前缀注入 `response.PeerId`（零接口变更，污染业务字段）
-  - C. 其他（业务层约定）
-- **`ResponseMessageCallbackAnswer.PeerId` 误用**：Bot `SendAsync` 把它当 callback id 传入 `AnswerCallbackQuery`，字段语义应是 callbackId。需新增 `CallbackId` 字段或重命名。
+- **~~`ITelegramAdapter.SendAsync` 无 AccountId 参数~~ ✅ 已按方案 B 落地（2026-09）**：
+  发送队列入队时把 `accountId:` 前缀注入 `response.PeerId`（DefaultNotificationService），
+  适配器以 `ResolveAccountIdFor`（按 `:` 拆分）取回账号。接口零变更；代价是 PeerId 字段承载路由信息（业务方无需感知）。
+- **`ResponseMessageCallbackAnswer.PeerId` 误用**：Bot `SendAsync` 把它当 callback id 传入 `AnswerCallbackQuery`，字段语义应是 callbackId。需新增 `CallbackId` 字段或重命名。**待拍板修复。**
 
-> 结论：上述两项涉及公开接口契约，影响所有派生系统。按「先 SDK 后业务」原则，待产品负责人拍板方案后统一修复，避免反复返工。
+> 方案 B 已实施，契约影响消除；CallbackId 一项待产品负责人拍板后统一修复。
 
 > 完成即转 ✅。每完成一项即时更新本表。
 
