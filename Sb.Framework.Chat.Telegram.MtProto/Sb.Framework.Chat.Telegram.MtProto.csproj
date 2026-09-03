@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+ï»¿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,10 +11,10 @@
     <IsPackable>true</IsPackable>
     <PackageId Condition="'$(DisableLicense)' != 'true'">Sb.Framework.Chat.Telegram.MtProto</PackageId>
     <PackageId Condition="'$(DisableLicense)' == 'true'">Sb.Framework.Chat.Telegram.MtProto.NoLicense</PackageId>
-    <Version>0.1.0-preview.28</Version>
+    <Version>0.1.0-preview.29</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Authors>Sb Framework</Authors>
-    <Description>SB Framework Chat ¸öÈËºÅÍ¨µÀÊÊÅäÆ÷£¨MTProto£¬WTelegramClient£©£º»á»°ÉúÃüÖÜÆÚ/ÈÏÖ¤Á÷³Ì/Update Á÷/ÀúÊ·²¹À­/·À³·»Ø/Ã½ÌåÏÂÔØ¡£</Description>
+    <Description>SB Framework Chat ï¿½ï¿½ï¿½Ëºï¿½Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½MTProtoï¿½ï¿½WTelegramClientï¿½ï¿½ï¿½ï¿½ï¿½á»°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½/Update ï¿½ï¿½/ï¿½ï¿½Ê·ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/Ã½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¡ï¿½</Description>
   </PropertyGroup>
 
   <ItemGroup>

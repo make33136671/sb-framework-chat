@@ -11,7 +11,7 @@
     <IsPackable>true</IsPackable>
     <PackageId Condition="'$(DisableLicense)' != 'true'">Sb.Framework.Chat</PackageId>
     <PackageId Condition="'$(DisableLicense)' == 'true'">Sb.Framework.Chat.NoLicense</PackageId>
-    <Version>0.1.0-preview.25</Version>
+    <Version>0.1.0-preview.26</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Authors>Sb Framework</Authors>
     <Description>SB Framework Chat 统一核心：双通道（Bot/个人号）消息模型、MessageHandler、会话上下文、账号容器、存储。设计参考盛派微信 SDK。</Description>
