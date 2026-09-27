@@ -11,14 +11,14 @@
     <IsPackable>true</IsPackable>
     <PackageId Condition="'$(DisableLicense)' != 'true'">Sb.Framework.Chat.Telegram.MtProto</PackageId>
     <PackageId Condition="'$(DisableLicense)' == 'true'">Sb.Framework.Chat.Telegram.MtProto.NoLicense</PackageId>
-    <Version>0.1.0-preview.29</Version>
+    <Version>0.1.0-preview.32</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Authors>Sb Framework</Authors>
     <Description>SB Framework Chat ���˺�ͨ����������MTProto��WTelegramClient�����Ự��������/��֤����/Update ��/��ʷ����/������/ý�����ء�</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Sb.Framework.Chat" Version="0.1.0-preview.25" />
+    <PackageReference Include="Sb.Framework.Chat" Version="0.1.0-preview.27" />
     <PackageReference Include="WTelegramClient" Version="4.2.1" />
   </ItemGroup>
 

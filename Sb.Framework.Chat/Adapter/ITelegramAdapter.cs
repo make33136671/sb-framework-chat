@@ -42,4 +42,22 @@ public interface ITelegramAdapter
 
     /// <summary>能力探测：该适配器（账号）是否支持某能力（commands/payments/anti_withdrawal 等）。</summary>
     bool Supports(string capability);
+
+    // ---- 扩展能力（默认不支持，MTProto 适配器实现；业务层按需调用，失败不影响主流程） ----
+
+    /// <summary>下载登录账号自己的头像到本地 wwwroot（返回相对 URL；无头像/不支持返回 null）。</summary>
+    Task<string?> DownloadSelfAvatarAsync(AccountBag account, CancellationToken ct)
+        => Task.FromResult<string?>(null);
+
+    /// <summary>获取 peer 资料详情（用户：姓名/用户名/手机号/在线状态；群/频道：标题/成员数/简介）。</summary>
+    Task<PeerDetail?> GetPeerDetailAsync(AccountBag account, string peerId, CancellationToken ct)
+        => Task.FromResult<PeerDetail?>(null);
+
+    /// <summary>获取群/频道成员列表（offset 分页，按最近活跃；不支持/非群返回空）。</summary>
+    Task<IReadOnlyList<PeerMember>> GetPeerMembersAsync(AccountBag account, string peerId, int offset, int limit, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<PeerMember>>([]);
+
+    /// <summary>批量获取用户 peer 在线状态（缓存未命中的 peer 被跳过，不出现在结果中）。</summary>
+    Task<IReadOnlyList<PeerPresence>> GetUsersPresenceAsync(AccountBag account, IEnumerable<string> peerIds, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<PeerPresence>>([]);
 }

@@ -199,8 +199,8 @@ throw new InvalidOperationException($"账号未连接: {accountId}");
 
         return response switch
         {
-            ResponseMessageText text => SendTextAsync(conn, text, ct),
-            ResponseMessageImage image => SendImageAsync(conn, image, ct),
+            ResponseMessageText text => SendTextAsync(conn, accountId, text, ct),
+            ResponseMessageImage image => SendImageAsync(conn, accountId, image, ct),
             _ => throw new NotSupportedException($"个人号通道暂不支持响应类型 {response.GetType().Name}")
         };
     }
@@ -1186,16 +1186,17 @@ _logger.LogDebug("跳过自动下载：扩展名不在白名单 {Ext}", ext);
     private static string SecurityMask(string value)
         => value.Length <= 8 ? new string('*', value.Length) : value[..2] + "****" + value[^2..];
 
-    private Task SendTextAsync(AccountConnection conn, ResponseMessageText text, CancellationToken ct)
+    private async Task SendTextAsync(AccountConnection conn, string accountId, ResponseMessageText text, CancellationToken ct)
     {
         var (_, peerId) = SplitPeer(text.PeerId ?? "");
-        return conn.Client.SendMessageAsync(
+        var sent = await conn.Client.SendMessageAsync(
             ResolveSendPeer(conn, peerId),
             text.Content,
-            null, 0, null, default, default);
+            null, 0, null, default, default).ConfigureAwait(false);
+        await ProcessSentMessageAsync(accountId, conn, sent).ConfigureAwait(false);
     }
 
-    private async Task SendImageAsync(AccountConnection conn, ResponseMessageImage image, CancellationToken ct)
+    private async Task SendImageAsync(AccountConnection conn, string accountId, ResponseMessageImage image, CancellationToken ct)
     {
         var (_, peerId) = SplitPeer(image.PeerId ?? "");
         if (image.Media?.LocalUrl == null)
@@ -1204,11 +1205,33 @@ _logger.LogDebug("跳过自动下载：扩展名不在白名单 {Ext}", ext);
         var fullPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", image.Media.LocalUrl.TrimStart('/'));
         await using var fs = File.OpenRead(fullPath);
         var inputFile = await conn.Client.UploadFileAsync(fs, image.Media.LocalUrl, null).ConfigureAwait(false);
-        await conn.Client.SendMediaAsync(
+        var sent = await conn.Client.SendMediaAsync(
             ResolveSendPeer(conn, peerId),
             "",
             inputFile,
             null, 0, null, default).ConfigureAwait(false);
+        await ProcessSentMessageAsync(accountId, conn, sent).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 发送成功后处理 Telegram 确认回执：服务端不会再向同一会话推送自己发出的消息
+    /// （SendMessageAsync 的 RPC 回执是唯一来源），不处理会导致本端发送的消息不落库/不广播，
+    /// 前端仅剩乐观气泡，刷新或历史同步后“只显示对方的消息”。复用 ProcessMessageAsync 走
+    /// 归一化 → inbox → 落库 → 广播 的完整链路；失败不影响发送结果（消息已发出）。
+    /// </summary>
+    private async Task ProcessSentMessageAsync(string accountId, AccountConnection conn, MessageBase? sent)
+    {
+        if (sent is not Message msg) return;
+        try
+        {
+            await ProcessMessageAsync(accountId, conn, msg, null).ConfigureAwait(false);
+            _logger.LogInformation("发送回执已回流: account={AccountId} peer={PeerId} msg={MsgId}",
+                accountId, msg.peer_id, msg.id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "发送回执处理失败（消息已发出）: account={AccountId} msg={MsgId}", accountId, msg.id);
+        }
     }
 
     private static InputPeer ResolveSendPeer(AccountConnection conn, string peerId)
@@ -1236,6 +1259,248 @@ _logger.LogDebug("跳过自动下载：扩展名不在白名单 {Ext}", ext);
         if (long.TryParse(peerId, out var id) && id != 0)
             return new InputPeerUser(id, 0);
         throw new InvalidOperationException($"鏃犳硶瑙ｆ瀽 peer: '{peerId}'");
+    }
+
+    // ---- 扩展能力（资料/成员/在线状态） ----
+
+    /// <summary>下载登录账号自己的头像（账号资料展示用；强制刷新：删除旧文件重新下载）。</summary>
+    public async Task<string?> DownloadSelfAvatarAsync(AccountBag account, CancellationToken ct)
+    {
+        if (account == null || !_connections.TryGetValue(account.AccountId, out var conn) || conn.Client == null)
+            return null;
+        try
+        {
+            var users = await conn.Client.Users_GetUsers([new InputUserSelf()]).ConfigureAwait(false);
+            if (users?.FirstOrDefault(u => u is User) is not User me) return null;
+            // 强制刷新：TG 头像文件已存在时 DownloadAvatarAsync 会跳过，先删旧文件保证换头像后能更新
+            var oldPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "storage", "chat", account.AccountId, "avatars", "self.jpg");
+            try { if (File.Exists(oldPath)) File.Delete(oldPath); } catch { }
+            return await DownloadAvatarAsync(conn, account.AccountId, "self", me, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "下载自身头像失败: {AccountId}", account.AccountId);
+            return null;
+        }
+    }
+
+    /// <summary>获取 peer 资料详情（用户/基础群/超级群与频道）。</summary>
+    public async Task<PeerDetail?> GetPeerDetailAsync(AccountBag account, string peerId, CancellationToken ct)
+    {
+        if (account == null || !_connections.TryGetValue(account.AccountId, out var conn) || conn.Client == null)
+            return null;
+        var input = await ResolveInputPeerAsync(conn, peerId, ct).ConfigureAwait(false);
+        if (input == null) return null;
+
+        try
+        {
+            switch (input)
+            {
+                case InputPeerUser ipu:
+                {
+                    var users = await conn.Client.Users_GetUsers([new InputUser(ipu.user_id, ipu.access_hash)]).ConfigureAwait(false);
+                    User? user = null;
+                    if (users != null) { foreach (var x in users) { if (x is User uu) { user = uu; break; } } }
+                    if (user == null) return null;
+                    var (online, _, lastSeenText) = DescribeUserStatus(user);
+                    var avatar = await DownloadAvatarAsync(conn, account.AccountId, peerId, user, ct).ConfigureAwait(false);
+                    return new PeerDetail
+                    {
+                        PeerId = peerId,
+                        PeerType = "User",
+                        Name = UserDisplayName(user),
+                        Username = user.username,
+                        Phone = string.IsNullOrEmpty(user.phone) ? null : user.phone,
+                        AvatarUrl = avatar,
+                        IsOnline = online,
+                        LastSeenText = lastSeenText,
+                    };
+                }
+                case InputPeerChannel ipc:
+                {
+                    var full = await conn.Client.Channels_GetFullChannel(new InputChannel(ipc.channel_id, ipc.access_hash)).ConfigureAwait(false);
+                    TL.Channel? channel = null;
+                    if (full?.chats != null && full.chats.TryGetValue(ipc.channel_id, out var c) && c is TL.Channel ch)
+                        channel = ch;
+                    var avatar = channel == null ? null : await DownloadAvatarAsync(conn, account.AccountId, peerId, channel, ct).ConfigureAwait(false);
+                    var channelFull = full?.full_chat as ChannelFull;
+                    return new PeerDetail
+                    {
+                        PeerId = peerId,
+                        PeerType = channel != null && channel.flags.HasFlag(TL.Channel.Flags.megagroup) ? "Chat" : "Channel",
+                        Name = channel?.title,
+                        Username = channel?.username,
+                        AvatarUrl = avatar,
+                        MembersCount = channelFull?.participants_count,
+                        Bio = string.IsNullOrEmpty(channelFull?.about) ? null : channelFull.about,
+                    };
+                }
+                case InputPeerChat ipchat:
+                {
+                    var full = await conn.Client.Messages_GetFullChat(ipchat.chat_id).ConfigureAwait(false);
+                    TL.Chat? chat = null;
+                    if (full?.chats != null && full.chats.TryGetValue(ipchat.chat_id, out var c2) && c2 is TL.Chat ch2)
+                        chat = ch2;
+                    var avatar = chat == null ? null : await DownloadAvatarAsync(conn, account.AccountId, peerId, chat, ct).ConfigureAwait(false);
+                    var chatFull = full?.full_chat as ChatFull;
+                    var membersCount = chatFull?.participants is ChatParticipants cps ? cps.participants.Count() : 0;
+                    return new PeerDetail
+                    {
+                        PeerId = peerId,
+                        PeerType = "Chat",
+                        Name = chat?.title,
+                        AvatarUrl = avatar,
+                        MembersCount = membersCount > 0 ? membersCount : null,
+                        Bio = string.IsNullOrEmpty(chatFull?.about) ? null : chatFull.about,
+                    };
+                }
+                default:
+                    return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取 peer 资料失败: account={AccountId} peer={PeerId}", account.AccountId, peerId);
+            return null;
+        }
+    }
+
+    /// <summary>获取群/频道成员列表（offset 分页；基础群走 GetFullChat 全量，超级群/频道走 GetParticipants 分页）。</summary>
+    public async Task<IReadOnlyList<PeerMember>> GetPeerMembersAsync(AccountBag account, string peerId, int offset, int limit, CancellationToken ct)
+    {
+        if (account == null || !_connections.TryGetValue(account.AccountId, out var conn) || conn.Client == null)
+            return [];
+        limit = Math.Clamp(limit, 1, 200);
+        offset = Math.Max(0, offset);
+        var input = await ResolveInputPeerAsync(conn, peerId, ct).ConfigureAwait(false);
+        if (input == null) return [];
+
+        var list = new List<PeerMember>();
+        try
+        {
+            switch (input)
+            {
+                case InputPeerChannel ipc:
+                {
+                    var parts = await conn.Client.Channels_GetParticipants(
+                        new InputChannel(ipc.channel_id, ipc.access_hash),
+                        new ChannelParticipantsRecent(), offset, limit, 0).ConfigureAwait(false);
+                    if (parts?.users == null) return list;
+                    foreach (var p in parts.participants ?? [])
+                    {
+                        var (userId, role) = DescribeChannelParticipant(p);
+                        if (userId == null) continue;
+                        parts.users.TryGetValue(long.Parse(userId), out var u);
+                        list.Add(ToPeerMember(userId, u, role));
+                    }
+                    return list;
+                }
+                case InputPeerChat ipchat:
+                {
+                    var full = await conn.Client.Messages_GetFullChat(ipchat.chat_id).ConfigureAwait(false);
+                    if (full?.full_chat is ChatFull cf && cf.participants is ChatParticipants cps)
+                    {
+                        foreach (var p in cps.participants ?? [])
+                        {
+                            var (userId, role) = DescribeChatParticipant(p);
+                            if (userId == null) continue;
+                            User? u = null;
+                            if (full.users != null && full.users.TryGetValue(long.Parse(userId), out var found))
+                                u = found;
+                            list.Add(ToPeerMember(userId, u, role));
+                        }
+                    }
+                    return list;
+                }
+                default:
+                    return list;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取群成员失败: account={AccountId} peer={PeerId}", account.AccountId, peerId);
+            return list;
+        }
+    }
+
+    /// <summary>批量获取用户 peer 在线状态（仅缓存已命中的 peer；不触发全量 dialog 刷新）。</summary>
+    public async Task<IReadOnlyList<PeerPresence>> GetUsersPresenceAsync(AccountBag account, IEnumerable<string> peerIds, CancellationToken ct)
+    {
+        if (account == null || peerIds == null || !_connections.TryGetValue(account.AccountId, out var conn) || conn.Client == null)
+            return [];
+
+        var wanted = new Dictionary<string, InputUser>();
+        foreach (var peerId in peerIds.Distinct())
+        {
+            if (conn.PeerInputs.TryGetValue(peerId, out var p) && p is InputPeerUser ipu)
+                wanted[peerId] = new InputUser(ipu.user_id, ipu.access_hash);
+        }
+        if (wanted.Count == 0) return [];
+
+        try
+        {
+            var users = await conn.Client.Users_GetUsers(wanted.Values.ToArray()).ConfigureAwait(false);
+            var byId = (users ?? []).OfType<User>().ToDictionary(u => u.id);
+            var result = new List<PeerPresence>();
+            foreach (var (peerId, inputUser) in wanted)
+            {
+                if (!byId.TryGetValue(inputUser.user_id, out var u)) continue;
+                var (online, lastSeenUtc, lastSeenText) = DescribeUserStatus(u);
+                result.Add(new PeerPresence { PeerId = peerId, IsOnline = online, LastSeenUtc = lastSeenUtc, LastSeenText = lastSeenText });
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "批量获取在线状态失败: account={AccountId} count={Count}", account.AccountId, wanted.Count);
+            return [];
+        }
+    }
+
+    /// <summary>解析 TG 用户在线状态（在线/离线精确时间/模糊时段）。</summary>
+    private static (bool? Online, DateTime? LastSeenUtc, string? LastSeenText) DescribeUserStatus(User u)
+        => u.status switch
+        {
+            UserStatusOnline => (true, null, null),
+            UserStatusOffline off when off.was_online > 0 =>
+                (false, DateTimeOffset.FromUnixTimeSeconds(off.was_online).UtcDateTime, null),
+            UserStatusOffline => (false, null, null),
+            UserStatusRecently => (false, null, "最近上线"),
+            UserStatusLastWeek => (false, null, "一周内上线"),
+            UserStatusLastMonth => (false, null, "一月内上线"),
+            _ => (null, null, null),
+        };
+
+    private static (string? UserId, string Role) DescribeChannelParticipant(ChannelParticipantBase p) => p switch
+    {
+        ChannelParticipantCreator c => (c.user_id.ToString(), "owner"),
+        ChannelParticipantAdmin a => (a.user_id.ToString(), "admin"),
+        ChannelParticipantSelf s => (s.user_id.ToString(), "member"),
+        ChannelParticipant cp => (cp.user_id.ToString(), "member"),
+        ChannelParticipantBanned b when b.peer is PeerUser pu => (pu.user_id.ToString(), "member"),
+        _ => (null, "member"),
+    };
+
+    private static (string? UserId, string Role) DescribeChatParticipant(ChatParticipantBase p) => p switch
+    {
+        ChatParticipantCreator c => (c.user_id.ToString(), "owner"),
+        ChatParticipantAdmin a => (a.user_id.ToString(), "admin"),
+        ChatParticipant cp => (cp.user_id.ToString(), "member"),
+        _ => (null, "member"),
+    };
+
+    private static PeerMember ToPeerMember(string userId, User? u, string role)
+    {
+        var (online, _, lastSeenText) = u == null ? ((bool?)null, null, null) : DescribeUserStatus(u);
+        return new PeerMember
+        {
+            UserId = userId,
+            Name = u == null ? $"用户 {userId}" : UserDisplayName(u),
+            Username = u?.username,
+            IsOnline = online == true,
+            LastSeenText = lastSeenText,
+            Role = role,
+        };
     }
 
     public void Dispose()
